@@ -1,0 +1,139 @@
+@font-face {
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local(''),
+  url('../fonts/google-sans-regular.woff2') format("woff2");
+}
+
+@font-face {
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local(''), url('../fonts/google-sans-medium.woff2'), format("woff2");
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Roboto'), local('Roboto-Regular') url('../fonts/roboto-v30-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('Roboto Medium'), local('Roboto-Medium'),
+  url('../fonts/roboto-v30-latin-500.woff2') format('woff2');
+}
+
+
+:root {
+  --black1: #181a1b;
+  --darkgrey4: #1f2223;
+  --mediumgrey0: #26292b;
+  --mediumgrey1: #393d41;
+  --taskcolor0: #ffffff;
+  --taskcolor: #fcfbf9;
+  --taskcolor1: #fcfbf9;
+  --taskcolor2: #C0BAB2;
+  --mediumgrey2: #484c50;
+  --white2: #C0BAB2;
+  --white3: #9C9E9F;
+  --white4: #BFC0C1;
+  --offwhite1: #9e9689;
+  --offwhite2: #c0bab2;
+  --offwhite3: #70757a;
+  --box-shadow1:
+    rgba(0, 0, 0, 0.14) 0px 8px 10px 1px,
+    rgba(0, 0, 0, 0.12) 0px 3px 14px 2px,
+    rgba(0, 0, 0, 0.2) 0px 2px 4px -1px;
+
+}
+
+.light-mode {
+  --black1: #ffffff;
+  --darkgrey4: #f1f3f4;
+  --mediumgrey0: rgb(219, 221, 224);
+  --mediumgrey1: #dadce0;
+
+  --taskcolor: #ffffff;
+  --taskcolor2: #e8f0fe;
+  --white2: #3c4043;
+  --white3: #3c4043;
+  --white4: #3c4043;
+  --offwhite1: #7e848b;
+  --offwhite2: #3C4043;
+  --bordergrey: 1px solid #dadce0;
+  --borderdarkgrey: 1px solid #dadce0;
+  --primary3: #5693e8;
+  --primary4: #41638c;
+}
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+}
+
+.custom-picker .preload * {
+  -webkit-transition: none !important;
+  transition: none !important;
+}
+.custom-picker .disable-transitions * {
+  -webkit-transition: none !important;
+  transition-duration: none !important;
+  transition-property: none !important;
+  transition-timing-function: none !important;
+  transition: none !important;
+}
+.custom-picker select, .custom-picker button {
+  background: var(--black1);
+  border: var(--bordergrey);
+  border-radius: var(--borderradius);
+  color: var(--white1);
+}
+.custom-picker input[type="search"], .custom-picker input[type="date"], .custom-picker input[type="time"], .custom-picker input[type="checkbox"] {
+  cursor: pointer;
+}
+.custom-picker select {
+  padding: 0.55rem 0rem;
+}
+.custom-picker button {
+  padding: 0.5rem 1rem;
+}
+.custom-picker form > button {
+  padding: 0.6rem 1.4rem;
+}
+.custom-picker input[type="text"]::placeholder, .custom-picker textarea::placeholder {
+  color: var(--white4);
+  font-weight: 400 !important;
+}
+.custom-picker button:hover {
+  background: var(--black0);
+}
+.custom-picker input[type="text"], .custom-picker textarea, .custom-picker select {
+  font-family: var(--primaryFont) !important;
+}
+.custom-picker button, .custom-picker input, .custom-picker select, .custom-picker textarea:focus {
+  outline: none;
+}
+.custom-picker textarea {
+  overflow: hidden;
+}
+.custom-picker svg {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+

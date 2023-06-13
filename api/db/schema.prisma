@@ -1,0 +1,427 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+// Define your own enums here
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum JobStatus {
+  PENDING
+  ACTIVE
+  DONE
+  FAILED
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OFFICE365
+}
+
+enum ConferencingProvider {
+  GOOGLEHANGOUTS
+  ZOOM
+  TEAMS
+}
+
+enum CalendarInviteStatus {
+  PENDING
+  DECLINED
+  MAYBE
+  ACCEPTED
+}
+
+enum OAuthProvider {
+  GOOGLE_WORKSPACE
+  AZURE_AD
+  ZOOM
+}
+
+enum PositionType {
+  CONTRACT
+  FULLTIME
+}
+
+// Define your own datamodels here and run `yarn redwood prisma migrate dev`
+// to create migrations for them and apply to your dev DB.
+model Product {
+  id               Int               @id @default(autoincrement())
+  title            String            @unique
+  description      String
+  enabledCustomers CustomerProduct[]
+  jobs             Job[]
+  config           Json
+  published        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Customer {
+  id          Int      @id @default(autoincrement())
+  auth0ID     String?  @unique
+  name        String   @unique
+  displayName String?
+  vaultKey    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  status              AccountStatus
+  users               User[]
+  enabledProducts     CustomerProduct[]
+  tenants             CustomerTenant[]
+  scheduledInterviews InterviewSchedulerEvent[]
+  addedCandidates     Candidate[]
+  Requisitions        Requisition[]
+  Attachments         Attachment[]
+}
+
+model CustomerProduct {
+  id         Int      @id @default(autoincrement())
+  product    Product  @relation(fields: [productID], references: [id])
+  productID  Int
+  customer   Customer @relation(fields: [customerID], references: [id])
+  customerID Int
+  config     Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenants       CustomerProductEnabledTenant[]
+  requiredOAuth RequiredOAuth?
+  googleAuth    ConfiguredOAuth[]
+
+  @@unique([customerID, productID])
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  auth0ID    String   @unique
+  email      String   @unique
+  name       String
+  customerID Int
+  avatarURL  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  schedulerOAuth           ConfiguredOAuth[]
+  jobs                     Job[]
+  status                   AccountStatus
+  customer                 Customer                   @relation(fields: [customerID], references: [id])
+  scheduledInterviews      InterviewSchedulerEvent[]
+  CandidateScheduleRequest CandidateScheduleRequest[]
+  Candidate                Candidate[]
+  Requisitions             Requisition[]
+  Notes                    Note[]
+  Attachments              Attachment[]
+
+  @@index([customerID])
+}
+
+model Job {
+  id               Int       @id @default(autoincrement())
+  status           JobStatus
+  user             User      @relation(fields: [initiatingUserID], references: [id])
+  initiatingUserID Int
+  product          Product   @relation(fields: [productID], references: [id])
+  productID        Int
+  resultBlob       Json?
+  resultURL        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, initiatingUserID])
+}
+
+model CustomerTenant {
+  customer                 Customer                       @relation(fields: [customerID], references: [id])
+  customerProductEnabledOn CustomerProductEnabledTenant[]
+
+  id         Int     @id @default(autoincrement())
+  customerID Int
+  url        String
+  vaultKey   String?
+
+  @@index([customerID])
+}
+
+model CustomerProductEnabledTenant {
+  customerProduct CustomerProduct @relation(fields: [customerProductID], references: [id])
+  customerTenant  CustomerTenant  @relation(fields: [customerTenantID], references: [id])
+
+  id                Int @id @default(autoincrement())
+  customerProductID Int
+  customerTenantID  Int
+
+  @@index([customerProductID, customerTenantID])
+}
+
+model RequiredOAuth {
+  id                Int     @id @default(autoincrement())
+  customerProductID Int     @unique
+  google            Boolean
+  azureAD           Boolean
+  adFS              Boolean
+  ping              Boolean
+  adLDAP            Boolean
+  zoom              Boolean
+
+  customerProduct CustomerProduct @relation(fields: [customerProductID], references: [id])
+
+  @@index([customerProductID])
+}
+
+model ConfiguredOAuth {
+  id                Int           @id @default(autoincrement())
+  userID            Int
+  customerProductID Int
+  accessToken       String
+  refreshToken      String
+  expiryDate        DateTime
+  provider          OAuthProvider
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user            User            @relation(fields: [userID], references: [id])
+  customerProduct CustomerProduct @relation(fields: [customerProductID], references: [id])
+
+  @@unique([userID, customerProductID, provider])
+  @@index([userID], type: Hash)
+}
+
+model InterviewSchedulerEvent {
+  id                     Int                   @id @default(autoincrement())
+  userID                 Int
+  customerID             Int
+  calendarProvider       CalendarProvider
+  conferencingProvider   ConferencingProvider?
+  title                  String
+  description            String
+  startTime              DateTime              @db.Timestamptz
+  endTime                DateTime              @db.Timestamptz
+  candidateID            Int
+  requisitionID          Int
+  interviewStageID       Int
+  candidateRequisitionID Int
+  status                 String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  user                 User                              @relation(fields: [userID], references: [id])
+  customer             Customer                          @relation(fields: [customerID], references: [id])
+  requisition          Requisition                       @relation(fields: [requisitionID], references: [id])
+  candidate            Candidate                         @relation(fields: [candidateID], references: [id])
+  InterviewStage       InterviewStage                    @relation(fields: [interviewStageID], references: [id])
+  CandidateRequisition CandidateRequisition              @relation(fields: [candidateRequisitionID], references: [id])
+  attendees            InterviewSchedulerEventAttendee[]
+  Notes                Note[]
+
+  @@index([candidateID])
+  @@index([requisitionID])
+  @@index([candidateRequisitionID])
+  @@index([interviewStageID])
+}
+
+model InterviewSchedulerEventAttendee {
+  id           Int                  @id @default(autoincrement())
+  eventID      Int
+  attendeeURI  String
+  name         String
+  email        String
+  inviteStatus CalendarInviteStatus
+  avatarURL    String?
+
+  interviewSchedulerEvent InterviewSchedulerEvent @relation(fields: [eventID], references: [id], onDelete: Cascade)
+
+  @@unique([eventID, attendeeURI])
+  @@unique([eventID, email])
+}
+
+model Requisition {
+  id               Int          @id @default(autoincrement())
+  owningCustomerID Int
+  owningUserID     Int
+  title            String
+  summary          String?
+  wdRequisitionID  Int
+  status           String
+  positionType     PositionType
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  Customer                Customer                  @relation(fields: [owningCustomerID], references: [id], onDelete: Cascade)
+  InterviewSchedulerEvent InterviewSchedulerEvent[]
+  User                    User                      @relation(fields: [owningUserID], references: [id])
+  CandidateRequisitions   CandidateRequisition[]
+  InterviewStages         InterviewStage[]
+  Attachments             Attachment[]
+}
+
+model Candidate {
+  id                Int      @id @default(autoincrement())
+  owningCustomerID  Int
+  addedByUserID     Int
+  firstName         String
+  lastName          String
+  preferredName     String?
+  email             String
+  homePhone         String?
+  mobilePhone       String?
+  about             String?
+  wdCandidateID     String   @unique
+  profilePictureURL String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer                  Customer                   @relation(fields: [owningCustomerID], references: [id])
+  user                      User                       @relation(fields: [addedByUserID], references: [id])
+  candidateScheduleRequests CandidateScheduleRequest[]
+  interviewSchedulerEvents  InterviewSchedulerEvent[]
+  CandidateRequisitions     CandidateRequisition[]
+  Attachments               Attachment[]
+  Notes                     Note[]
+
+  @@index([owningCustomerID])
+  @@index([addedByUserID])
+}
+
+model CandidateRequisition {
+  id            Int      @id @default(autoincrement())
+  candidateID   Int
+  requisitionID Int
+  status        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  Candidate                Candidate                  @relation(fields: [candidateID], references: [id], onDelete: Cascade)
+  Requisition              Requisition                @relation(fields: [requisitionID], references: [id], onDelete: Cascade)
+  CandidateSchedules       CandidateSchedule[]
+  Interviews               InterviewSchedulerEvent[]
+  CandidateScheduleRequest CandidateScheduleRequest[]
+  Notes                    Note[]
+
+  @@unique([candidateID, requisitionID])
+  @@index([candidateID])
+  @@index([requisitionID])
+}
+
+model InterviewStage {
+  id               Int    @id @default(autoincrement())
+  requisitionID    Int
+  title            String
+  pipelinePosition Int
+
+  Requisition               Requisition                @relation(fields: [requisitionID], references: [id], onDelete: Cascade)
+  InterviewSchedulerEvents  InterviewSchedulerEvent[]
+  CandidateScheduleRequests CandidateScheduleRequest[]
+  CandidateSchedules        CandidateSchedule[]
+
+  @@unique([requisitionID, pipelinePosition])
+  @@index([requisitionID])
+}
+
+model CandidateSchedule {
+  id                     Int      @id @default(autoincrement())
+  candidateRequisitionID Int
+  interviewStageID       Int
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  CandidateRequisition CandidateRequisition       @relation(fields: [candidateRequisitionID], references: [id])
+  InterviewStage       InterviewStage             @relation(fields: [interviewStageID], references: [id])
+  scheduleSelections   ScheduleSelection[]
+  scheduleRequests     CandidateScheduleRequest[]
+
+  @@unique([candidateRequisitionID, interviewStageID])
+  @@index([candidateRequisitionID])
+}
+
+model CandidateScheduleRequest {
+  id                        Int       @id @default(autoincrement())
+  candidateID               Int
+  candidateRequisitionID    Int
+  interviewStageID          Int
+  initiatingUserID          Int
+  candidateScheduleID       Int
+  emailSentFromName         String
+  emailSentFromAddressAlias String
+  emailSubject              String
+  emailBody                 String
+  emailServiceMessageID     String
+  linkID                    String    @unique @default(uuid())
+  linkClickedAt             DateTime?
+  startTime                 DateTime
+  endTime                   DateTime
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  initiatingUser       User                               @relation(fields: [initiatingUserID], references: [id])
+  CandidateRequisition CandidateRequisition               @relation(fields: [candidateRequisitionID], references: [id], onDelete: Cascade)
+  InterviewStage       InterviewStage                     @relation(fields: [interviewStageID], references: [id], onDelete: Cascade)
+  candidate            Candidate                          @relation(fields: [candidateID], references: [id], onDelete: Cascade)
+  candidateSchedule    CandidateSchedule                  @relation(fields: [candidateScheduleID], references: [id], onDelete: Cascade)
+  reminders            CandidateScheduleRequestReminder[]
+
+  @@index([candidateScheduleID])
+}
+
+model CandidateScheduleRequestReminder {
+  id                         Int      @id @default(autoincrement())
+  candidateScheduleRequestID Int
+  emailServiceMessageID      String
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  candidateScheduleRequest CandidateScheduleRequest @relation(fields: [candidateScheduleRequestID], references: [id], onDelete: Cascade)
+
+  @@index([candidateScheduleRequestID])
+}
+
+model ScheduleSelection {
+  id        Int      @id @default(autoincrement())
+  startTime DateTime @db.Timestamptz
+  endTime   DateTime @db.Timestamptz
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  CandidateSchedules CandidateSchedule[]
+}
+
+model Note {
+  id            Int      @id @default(autoincrement())
+  content       String
+  addedByUserID Int
+  createdAt     DateTime @default(now())
+  upatedAt      DateTime @updatedAt
+
+  Candidate               Candidate[]
+  CandidateRequsitions    CandidateRequisition[]
+  User                    User                      @relation(fields: [addedByUserID], references: [id])
+  InterviewSchedulerEvent InterviewSchedulerEvent[]
+}
+
+model Attachment {
+  id               Int      @id @default(autoincrement())
+  uploadedByUserID Int
+  owningCustomerID Int
+  key              String   @unique @default(uuid())
+  title            String
+  url              String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  Candidates     Candidate[]
+  Requisitions   Requisition[]
+  UploadedBy     User          @relation(fields: [uploadedByUserID], references: [id])
+  OwningCustomer Customer      @relation(fields: [owningCustomerID], references: [id])
+
+  @@index([uploadedByUserID])
+  @@index([owningCustomerID])
+}
